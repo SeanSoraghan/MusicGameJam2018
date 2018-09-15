@@ -5,6 +5,7 @@ using UnityEngine.Events;
 
 public class InputHandler : MonoBehaviour
 {
+    public bool InputAllowed = true;
     public UnityEvent OnRightButtonPressed;
     public UnityEvent OnLeftButtonPressed;
 
@@ -23,22 +24,25 @@ public class InputHandler : MonoBehaviour
 
 	void Update ()
     {
-	    if (Input.GetAxis("Horizontal") > 0)
+        if (InputAllowed)
         {
-            if (!ButtonPressed)
-                RightButtonPressed();
-        }
-        else if (Input.GetAxis("Horizontal") < 0)
-        {
-            if (!ButtonPressed)
-                LeftButtonPressed();
-        }
-        else
-        {
-            if (RightPressed)
-                RightButtonReleased();
-            else if (LeftPressed)
-                LeftButtonReleased();
+	        if (Input.GetAxis("Horizontal") > 0)
+            {
+                if (!ButtonPressed)
+                    RightButtonPressed();
+            }
+            else if (Input.GetAxis("Horizontal") < 0)
+            {
+                if (!ButtonPressed)
+                    LeftButtonPressed();
+            }
+            else
+            {
+                if (RightPressed)
+                    RightButtonReleased();
+                else if (LeftPressed)
+                    LeftButtonReleased();
+            }
         }
 	}
 

@@ -7,7 +7,14 @@ public class EnvironmentScroller : MonoBehaviour
     public GameObject IslandPrefab;
     public Transform TileFront;
     public Transform TileBack;
-    public Transform PlayerTransform;
+    public GameObject WaterGridFront;
+    public GameObject WaterGridBack;
+    private MassSpawner WaterSpawnerFront;
+    private MassSpawner WaterSpawnerBack;
+    private MassSpringSystem WaterSystemFront;
+    private MassSpringSystem WaterSystemBack;
+    public PlayerController Player;
+    private WaterForceController PlayerForceController;
     public float TerrainLength = 240.0f;
     public float TerrainWidth = 50.0f;
 
@@ -24,10 +31,21 @@ public class EnvironmentScroller : MonoBehaviour
     {
 		TerrainFrontStartPosition = TileFront.position;
         TerrainBackStartPosition = TileBack.position;
-        PlayerStartPosition = PlayerTransform.position;
-        PlayerStartRotation = PlayerTransform.rotation;
+        PlayerStartPosition = Player.transform.position;
+        PlayerStartRotation = Player.transform.rotation;
         SpawnIslands(TileFront, ref IslandsFront);
         SpawnIslands(TileBack, ref IslandsBack);
+        if (WaterGridBack != null)
+        {
+            WaterSpawnerBack = WaterGridBack.GetComponent<MassSpawner>();
+            WaterSystemBack = WaterGridBack.GetComponent<MassSpringSystem>();
+        }
+        if (WaterGridFront != null)
+        {
+            WaterSpawnerFront = WaterGridFront.GetComponent<MassSpawner>();
+            WaterSystemFront = WaterGridFront.GetComponent<MassSpringSystem>();
+        }
+        PlayerForceController = Player.GetComponent<WaterForceController>();
 	}
 	
 	// Update is called once per frame
@@ -38,21 +56,42 @@ public class EnvironmentScroller : MonoBehaviour
 
     void UpdatePlayerGroundPosition()
     {
-        float PlayerZ = PlayerTransform.position.z;
-        if (PlayerZ > TileFront.position.z - TerrainLength * 0.2f && PlayerZ < TileFront.position.z + TerrainLength * 0.5f)
+        float PlayerZ = Player.transform.position.z;
+        if (PlayerForceController != null && 
+            PlayerZ > TileBack.position.z + TerrainLength * 0.4f && PlayerZ < TileFront.position.z - TerrainLength * 0.4f &&
+            PlayerForceController.WaterGrid != WaterSystemFront)
+        {
+            PlayerForceController.WaterGrid = WaterSystemFront;
+        }
+        if (PlayerZ > TileFront.position.z - TerrainLength * 0.4f && PlayerZ < TileFront.position.z /*+ TerrainLength * 0.5f*/)
         {
             Debug.Log(PlayerZ + " | " + TileFront.position.z);
             Vector3 currentBackPos = TileBack.transform.position;
             currentBackPos.Set(currentBackPos.x, currentBackPos.y, currentBackPos.z + TerrainLength * 2.0f);
             TileBack.transform.position = currentBackPos;
+
             Transform oldBack = TileBack;
-            List<GameObject> oldIslandsBack = IslandsBack;
             TileBack = TileFront;
             TileFront = oldBack;
+
+            List<GameObject> oldIslandsBack = IslandsBack;
             IslandsBack = IslandsFront;
             IslandsFront = oldIslandsBack;
             DestroyIslands(ref IslandsFront);
             SpawnIslands(TileFront, ref IslandsFront);
+
+            //MassSpawner oldBackSpawner = WaterSpawnerBack;
+            //WaterSpawnerBack = WaterSpawnerFront;
+            //WaterSpawnerFront = oldBackSpawner;
+            //Vector3 oldOffset = WaterSpawnerFront.UnitPositionOffset;
+            //WaterSpawnerFront.UnitPositionOffset = new Vector3(oldOffset.x, oldOffset.y, oldOffset.z + 96 * 2);
+
+            //MassSpringSystem oldBackSystem = WaterSystemBack;
+            //WaterSystemBack = WaterSystemFront;
+            //WaterSystemFront = oldBackSystem;
+            //PlayerForceController.WaterGrid = WaterSystemBack;
+
+            Player.SwapWaterPlanes();
         }
     }
 
@@ -60,21 +99,21 @@ public class EnvironmentScroller : MonoBehaviour
     {
         TileFront.position = TerrainFrontStartPosition;
         TileBack.position = TerrainBackStartPosition;
-        PlayerTransform.position = PlayerStartPosition;
-        PlayerTransform.rotation = PlayerStartRotation;
+        Player.transform.position = PlayerStartPosition;
+        Player.transform.rotation = PlayerStartRotation;
     }
 
     void SpawnIslands(Transform Tile, ref List<GameObject> IslandsList)
     {
-        float islandRowLength = TerrainLength / 10.0f;
-        float zPosStart = Tile.position.z - TerrainLength * 0.5f;
-        for (int i = 3; i < 10; i += 2)
-        {
-            float zPos = zPosStart + i * islandRowLength;
-            float xPos = Random.Range(-TerrainWidth * 0.5f + islandRowLength, 
-                                      TerrainWidth * 0.5f - islandRowLength);
-            IslandsList.Add(GameObject.Instantiate(IslandPrefab, new Vector3(xPos, 0.0f, zPos), Quaternion.identity));
-        }
+        //float islandRowLength = TerrainLength / 10.0f;
+        //float zPosStart = Tile.position.z - TerrainLength * 0.5f;
+        //for (int i = 3; i < 10; i += 2)
+        //{
+        //    float zPos = zPosStart + i * islandRowLength;
+        //    float xPos = Random.Range (-TerrainWidth * 0.5f + islandRowLength,
+        //                              TerrainWidth * 0.5f - islandRowLength);
+        //    IslandsList.Add (GameObject.Instantiate (IslandPrefab, new Vector3 (xPos, 10.0f, zPos), Quaternion.identity));
+        //}
     }
 
     void DestroyIslands(ref List<GameObject> IslandsList)

@@ -52,10 +52,20 @@
             float _Speed;
             float _Amount;
             
+            
             v2f vert (appdata v)
             {
                 v2f o;
-                v.vertex.y += sin(_Time.y * _Speed + v.vertex.z * _Amplitude) * _Distance * _Amount;
+                float halfV = 50.0f;
+                float normedY = (v.vertex.y + halfV) / (halfV * 2.0f);
+                //float seamEdgeWidth = 0.1f;
+                //float start = smoothstep(0.0f, seamEdgeWidth, normedY);
+                //float end = 1.0f - smoothstep(1.0f - seamEdgeWidth, 1.0f, normedY);
+                //float effect = 1.0f - (start * end);
+                const float pi = 3.14159265359;
+                const float pi2 = 2.0f * pi;
+                float c = normedY * pi2;
+                v.vertex.z += sin(c - _Time.y/*-_Time.y * _Speed + normedY * _Amplitude*/) * _Distance * _Amount;// * effect;
                 float4 n = v.normal;
                 o.normal = float4(n.x + sin(_Time.y), n.y, n.z, n.w);
                 o.vertex = UnityObjectToClipPos(v.vertex);
