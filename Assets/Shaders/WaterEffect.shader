@@ -9,6 +9,12 @@
         _NSpeed("Bump Mapping Animation Speed", Range(0, 10)) = 1.0
         _NShift("Texture Shift Amount", Range(0, 0.5)) = 0.1
         _TextureShiftGranularity("Texture Shift Granularity", Range(0, 10)) = 1.0
+
+        _TrailGranularity("Trail Granularity", Range(0, 100)) = 50.0
+        _TrailSpeed("Trail Animation Speed", Range(0, 100)) = 100.0
+        _MinTrailWidth("Trail Start Width", Range(0,1)) = 0.05
+        _MaxTrailWidth("Trail End Width", Range(0,1)) = 0.5
+        _GlobalTrailWeight("Global Trail Weight", Range(0,1)) = 1.0
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" }
@@ -89,6 +95,12 @@
         float _NAmount;
         float _NSpeed;
 
+        float _TrailGranularity;
+        float _TrailSpeed;
+        float _MinTrailWidth;
+        float _MaxTrailWidth;
+        float _GlobalTrailWeight;
+
         void vert(inout appdata_full v)
         {
             // lerp at edges to get rid of seam.
@@ -105,33 +117,33 @@
                					    (sin(v.vertex.z * _Granularity) + _Time * _NSpeed))  * _NAmount * effect;
         }
 
-        float2 GetTrailWeightAndPosition(float2 trailStart, float2 trailEnd, float2 uv)
+        float2 GetTrailWeightAndPosition(float2 trailStart, float2 trailEnd, float2 uv, float2 trailWidthStartEnd)
         {
             float2 pa = uv - trailEnd;
             float2 ba = trailStart - trailEnd;
             float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
             float d = length(pa - ba * h);
             float positionOnLine = clamp(length(uv - trailStart) / length(ba), 0.0, 1.0);
-            float thickness = positionOnLine * 0.6 + 0.1;
+            float thickness = (positionOnLine * (trailWidthStartEnd.y - trailWidthStartEnd.x)) + trailWidthStartEnd.x;
             float trailEffect = 1.0 - smoothstep(0.0, thickness, d);
-            return float2(trailEffect, positionOnLine);
+            return float2(trailEffect * _GlobalTrailWeight, positionOnLine);
         }
 
-        float GetTextureShiftForTrailEffect(float2 weightAndPositionOnLine, float2 uv)
+        float GetTextureShiftForTrailEffect(float2 weightAndPositionOnLine, float2 uv, float baseGranularity, float baseSpeed)
         {
-            float g = 50.0f * weightAndPositionOnLine.y + 1.0f;
-            float speed = (200.0f/* * weightAndPositionOnLine.x*/);
+            float g = baseGranularity * weightAndPositionOnLine.y + 1.0f;
+            float speed = baseSpeed;
             float trailShift = noise(uv.x * g + _Time * speed,
                                      uv.y * g + _Time * speed,
                                      g + _Time * speed);
             return trailShift;
         }
 
-        float2 TrailEffectTextureShiftAndWeight(float2 a, float2 b, float2 uv)
+        float2 TrailEffectTextureShiftAndWeight(float2 a, float2 b, float2 uv, float baseGranularity, float baseSpeed, float2 trailWidthStartEnd)
         {
-            float2 weightAndPosOnLine = GetTrailWeightAndPosition(a, b, uv);
+            float2 weightAndPosOnLine = GetTrailWeightAndPosition(a, b, uv, trailWidthStartEnd);
             float trailWeight = weightAndPosOnLine.x;
-            float trailShift = GetTextureShiftForTrailEffect(weightAndPosOnLine, uv);
+            float trailShift = GetTextureShiftForTrailEffect(weightAndPosOnLine, uv, baseGranularity, baseSpeed);
             return float2(trailShift, trailWeight);
         }
 
@@ -169,7 +181,7 @@
 
             float2 a = float2(TrailPoints.x*maxX, TrailPoints.y*maxY);
             float2 b = float2(TrailPoints.z*maxX, TrailPoints.w*maxY);
-            float2 trailShiftAndWeight = TrailEffectTextureShiftAndWeight(a, b, uv);
+            float2 trailShiftAndWeight = TrailEffectTextureShiftAndWeight(a, b, uv, _TrailGranularity, _TrailSpeed, float2(_MinTrailWidth, _MaxTrailWidth));
             float trailShift = trailShiftAndWeight.x * _NShift;
             float uTrail = (uv.x - trailShift) % maxX;
             float vTrail = (uv.y - trailShift) % maxY;

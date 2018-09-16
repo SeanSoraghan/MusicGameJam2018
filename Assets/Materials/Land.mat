@@ -60,20 +60,20 @@ Material:
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _GlossMapScale: 1
-    - _Glossiness: 0.038
+    - _Glossiness: 0.139
     - _GlossyReflections: 1
-    - _Granularity: 7
-    - _Metallic: 1
+    - _Granularity: 8.01
+    - _Metallic: 0
     - _Mode: 0
-    - _NAmount: 0.482
-    - _NShift: 0
-    - _NSpeed: 3
+    - _NAmount: 0.173
+    - _NShift: 0.243
+    - _NSpeed: 10
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _TextureShiftGranularity: 0
+    - _TextureShiftGranularity: 9.53
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:

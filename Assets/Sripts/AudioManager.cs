@@ -2,61 +2,40 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public static class AudioFadeOut
-{
-    public static IEnumerator FadeOut (AudioSource audioSource, float FadeTime)
-    {
-        float startVolume = audioSource.volume;
- 
-        while (audioSource.volume > 0)
-        {
-            audioSource.volume -= startVolume * Time.deltaTime / FadeTime;
- 
-            yield return null;
-        }
- 
-        audioSource.Stop ();
-        audioSource.volume = startVolume;
-    }
-}
-
 public class AudioManager : MonoBehaviour
 {
     enum AudioLevel
     {
-        Pad,
-        PadLead,
-        PadLeadDrums,
-        PadLeadDrumsBass,
-        NumLevels
+        NumLevels = 7
     };
 
-    public int NumClipsPerLevel = 4;
-    static string GetLevelName(AudioLevel level)
+    static string GetLevelName(int level)
     {
-        switch (level)
-        {
-            case AudioLevel.Pad: return "NoLead";
-            case AudioLevel.PadLead: return "NoDrums";
-            case AudioLevel.PadLeadDrums: return "NoBass";
-            case AudioLevel.PadLeadDrumsBass: return "AllInstruments";
-            default: return "";
-        }
+        return "Level"+(level+1);
     }
-    private List<List<AudioClip>> AudioClipsRight = new List<List<AudioClip>>();
-    private List<List<AudioClip>> AudioClipsLeft = new List<List<AudioClip>>();
+    public int NumClipsPerLevel = 4;
+    //private List<List<AudioClip>> AudioClipsRight = new List<List<AudioClip>>();
+    //private List<List<AudioClip>> AudioClipsLeft = new List<List<AudioClip>>();
+    private List<List<AudioClip>> AudioClips = new List<List<AudioClip>>();
     private AudioSource AudioSourceRight;
     private AudioSource AudioSourceLeft;
+    private AudioSource AudioSourceForward;
     public int LoopLevel = 0;
     public int LoopsPerLevel = 4;
     public double NumEighthNotesPerLoop = 6.0;
     public double BeatsPerMinute = 80.0;
     public double LoopCompleteThreshold = 0.2;
-    private double SecondsPerLoop = 0.0;
+    public PlayerController Player;
+    public double SecondsPerLoop = 0.0;
     private int NumConsecutiveLoops = 0;
 
-    private double StopSampleThreshold = 0.3;
+    private bool RightSourceFading = false;
+    private bool LeftSourceFading = false;
+    private bool ForwardSourceFading = false;
+    private double StopSampleThreshold = 0.8;
+    private float fadeRate = 10.0f;
 
+    private int NumIncorrectStrokes = 0;
 	// Use this for initialization
 	void Start ()
     {
@@ -67,21 +46,26 @@ public class AudioManager : MonoBehaviour
 
         AudioSourceRight = gameObject.AddComponent<AudioSource>();
         AudioSourceLeft = gameObject.AddComponent<AudioSource>();
+        AudioSourceForward = gameObject.AddComponent<AudioSource>();
         AudioSourceRight.playOnAwake = false;
         AudioSourceLeft.playOnAwake = false;
         AudioSourceRight.loop = false;
         AudioSourceLeft.loop = false;
+        AudioSourceForward.playOnAwake = false;
+        AudioSourceForward.loop = false;
         
 	    for (int i = 0; i < (int)AudioLevel.NumLevels; ++i)
         {
-            AudioClipsRight.Add(new List<AudioClip>());
-            AudioClipsLeft.Add(new List<AudioClip>());
-            string levelName = GetLevelName((AudioLevel)i);
+            //AudioClipsRight.Add(new List<AudioClip>());
+            //AudioClipsLeft.Add(new List<AudioClip>());
+
+            AudioClips.Add(new List<AudioClip>());
+
+            //string levelName = GetLevelName((AudioLevel)i);
+            string levelName = GetLevelName(i);
             for (int j = 0; j < NumClipsPerLevel; ++j)
             {
                 int loopIndex = j + 1;
-                if (i == 3)
-                    loopIndex = loopIndex * 10 + 2;
                 string clipNameRight = "LoopR" + loopIndex;
                 string clipNameLeft = "LoopL" + loopIndex;
                 string clipPathRight = levelName + "/" + clipNameRight;
@@ -89,26 +73,56 @@ public class AudioManager : MonoBehaviour
 
                 AudioClip clipRight = Resources.Load(clipPathRight) as AudioClip;
                 if (clipRight != null)
-                    AudioClipsRight[i].Add(clipRight);
+                    AudioClips/*Right*/[i].Add(clipRight);
                 else
                     Debug.LogError("Clip " + clipPathRight + " Not Found!");
 
                 AudioClip clipLeft = Resources.Load(clipPathLeft) as AudioClip;
                 if (clipLeft != null)
-                    AudioClipsLeft[i].Add(clipLeft);
+                    AudioClips/*Left*/[i].Add(clipLeft);
                 else
                     Debug.LogError("Clip " + clipPathLeft + " Not Found!");
             }
         }
 	}
 
+    private void Update ()
+    {
+        if (LeftSourceFading && AudioSourceLeft.isPlaying)
+        {
+            AudioSourceLeft.volume = Mathf.Lerp(AudioSourceLeft.volume, 0.0f, Time.deltaTime * fadeRate);
+            if (AudioSourceLeft.volume <= 0)
+                AudioSourceLeft.Stop();
+        }
+        if (RightSourceFading && AudioSourceRight.isPlaying)
+        {
+            AudioSourceRight.volume = Mathf.Lerp(AudioSourceRight.volume, 0.0f, Time.deltaTime * fadeRate);
+            if (AudioSourceRight.volume <= 0)
+                AudioSourceRight.Stop();
+        }
+        if (ForwardSourceFading && AudioSourceForward.isPlaying)
+        {
+            AudioSourceForward.volume = Mathf.Lerp(AudioSourceForward.volume, 0.0f, Time.deltaTime * fadeRate);
+            if (AudioSourceForward.volume <= 0)
+                AudioSourceForward.Stop();
+        }
+    }
+
+    public void SetLoopLevel(int l)
+    {
+        LoopLevel = l;
+        Player.Level = (float)LoopLevel / (float)AudioLevel.NumLevels;
+    }
+
     public void PaddleRightPressed(float TimeSinceLastStroke)
     {
-        AudioFadeOut.FadeOut(AudioSourceRight, 0.1f);
+        AudioSourceRight.Stop();
+        RightSourceFading = false;
+        AudioSourceRight.volume = 1.0f;
         //AudioSourceRight.Stop();
-        UpdateLevel((double)TimeSinceLastStroke);
-        int clipIndex = GetClipNumber();
-        AudioSourceRight.clip = AudioClipsRight[LoopLevel][clipIndex];
+        //UpdateLevel((double)TimeSinceLastStroke);
+        //int clipIndex = GetClipNumber();
+        AudioSourceRight.clip = GetNextClip();//AudioClipsRight[LoopLevel][clipIndex];
         AudioSourceRight.Play();
     }
     
@@ -116,41 +130,63 @@ public class AudioManager : MonoBehaviour
     {
         if (TimeSinceLastStroke < SecondsPerLoop * StopSampleThreshold)
         {
-            AudioFadeOut.FadeOut(AudioSourceRight, 0.1f);
-            NumConsecutiveLoops = Mathf.Clamp(NumConsecutiveLoops - 1, 0, LoopsPerLevel);
+            RightSourceFading = true;
+            //NumConsecutiveLoops = Mathf.Clamp(NumConsecutiveLoops - 1, 0, LoopsPerLevel);
         }
     }
 
     public void PaddleLeftPressed(float TimeSinceLastStroke)
     {
-        AudioFadeOut.FadeOut(AudioSourceLeft, 0.1f);
-        UpdateLevel((double)TimeSinceLastStroke);
-        int clipIndex = GetClipNumber();
-        AudioSourceLeft.clip = AudioClipsLeft[LoopLevel][clipIndex];
+        AudioSourceLeft.Stop();
+        LeftSourceFading = false;
+        AudioSourceLeft.volume = 1.0f;
+        //UpdateLevel((double)TimeSinceLastStroke);
+        //int clipIndex = GetClipNumber();
+        AudioSourceLeft.clip = GetNextClip();//AudioClipsLeft[LoopLevel][clipIndex];
         AudioSourceLeft.Play();
     }
     
-    public int GetClipNumber()
-    {
-        return NumConsecutiveLoops == 0 ? 0 : 
-               NumConsecutiveLoops == LoopsPerLevel - 1 ? NumClipsPerLevel - 1 : 
-               Random.Range(0,NumClipsPerLevel - 1);
-    }
-
     public void PaddleLeftReleased(float TimeSinceLastStroke)
     {
         if (TimeSinceLastStroke < SecondsPerLoop * StopSampleThreshold)
         { 
-            AudioFadeOut.FadeOut(AudioSourceLeft, 0.1f);
-            NumConsecutiveLoops = Mathf.Clamp(NumConsecutiveLoops - 1, 0, LoopsPerLevel);
+            LeftSourceFading = true;
+            //NumConsecutiveLoops = Mathf.Clamp(NumConsecutiveLoops - 1, 0, LoopsPerLevel);
         }
     }
 
-    void UpdateLevel(double TimeSinceLastStroke)
+    public void PaddleForwardPressed(float TimeSinceLastStroke)
     {
-        Debug.Log("Since Last Stroke: " + TimeSinceLastStroke);
-        Debug.Log("Seconds Per Loop: " + SecondsPerLoop);
-        Debug.Log("Difference: " + Mathf.Abs((float)(TimeSinceLastStroke - SecondsPerLoop)));
+        AudioSourceForward.Stop();
+        ForwardSourceFading = false;
+        AudioSourceForward.volume = 1.0f;
+        //UpdateLevel((double)TimeSinceLastStroke);
+        //int clipIndex = GetClipNumber();
+        AudioSourceForward.clip = GetNextClip();//AudioClipsLeft[LoopLevel][clipIndex];
+        AudioSourceForward.Play();
+    }
+    
+    public void PaddleForwardReleased(float TimeSinceLastStroke)
+    {
+        if (TimeSinceLastStroke < SecondsPerLoop * StopSampleThreshold)
+        { 
+            ForwardSourceFading = true;
+            //NumConsecutiveLoops = Mathf.Clamp(NumConsecutiveLoops - 1, 0, LoopsPerLevel);
+        }
+    }
+
+    public AudioClip GetNextClip()
+    {
+        Debug.Log("Num Consec: " + NumConsecutiveLoops + " Num Clips Per Level: " + NumClipsPerLevel);
+        Debug.Log("Chosen Clip: " + NumConsecutiveLoops % (NumClipsPerLevel * 2));
+        return AudioClips[LoopLevel][NumConsecutiveLoops % (NumClipsPerLevel * 2)];
+        //return NumConsecutiveLoops == 0 ? 0 : 
+        //       NumConsecutiveLoops == LoopsPerLevel - 1 ? NumClipsPerLevel - 1 : 
+        //       Random.Range(1,NumClipsPerLevel - 2);
+    }
+
+    public bool UpdateLevel(double TimeSinceLastStroke, double TimeSinceLastGlobalMetronomeTick)
+    {
         if (Mathf.Abs((float)(TimeSinceLastStroke - SecondsPerLoop)) <= LoopCompleteThreshold)
         {
             ++NumConsecutiveLoops;
@@ -158,14 +194,35 @@ public class AudioManager : MonoBehaviour
             {
                 LoopLevel = Mathf.Clamp(LoopLevel + 1, 0, (int)AudioLevel.NumLevels - 1);
                 Debug.Log("^^^^^^ LEVEL INCREASED! ^^^^^^");
+                Player.Level = (float)LoopLevel / (float)AudioLevel.NumLevels;
                 NumConsecutiveLoops = 0;
             }
+            return true;
         }
-        else
+        if (NumConsecutiveLoops > 0)
         {
             NumConsecutiveLoops = 0;
             LoopLevel = Mathf.Clamp(LoopLevel - 1, 0, (int)AudioLevel.NumLevels - 1);
             Debug.Log("...... Decreased Level .....");
+            Player.Level = (float)LoopLevel / (float)AudioLevel.NumLevels;
+            return false;
         }
+        if (NumIncorrectStrokes > 0)
+        {
+            Debug.Log("Incorrect Stroke");
+            NumIncorrectStrokes = 0;
+            return false;
+        }
+        // Initial stroke.
+        float firstStrokeAllowanceAnticipate = (float)SecondsPerLoop * 0.3f;
+        float firstStrokeAllowanceReact = (float)SecondsPerLoop * 0.1f;
+        if (Mathf.Abs((float)(TimeSinceLastGlobalMetronomeTick - SecondsPerLoop)) <= firstStrokeAllowanceAnticipate ||
+            TimeSinceLastGlobalMetronomeTick <= firstStrokeAllowanceReact)
+        {
+            NumIncorrectStrokes = 0;
+            return true;
+        }
+        ++NumIncorrectStrokes;
+        return false;
     }
 }

@@ -26,6 +26,8 @@ public class EnvironmentScroller : MonoBehaviour
     private Vector3 PlayerStartPosition;
     private Quaternion PlayerStartRotation;
 
+    private bool TerrainSwapRequired = false;
+    private float TerrainSwapSyncLimit = 0.4f;
 	// Use this for initialization
 	void Start ()
     {
@@ -63,36 +65,42 @@ public class EnvironmentScroller : MonoBehaviour
         {
             PlayerForceController.WaterGrid = WaterSystemFront;
         }
-        if (PlayerZ > TileFront.position.z - TerrainLength * 0.4f && PlayerZ < TileFront.position.z /*+ TerrainLength * 0.5f*/)
+        if (PlayerZ > TileFront.position.z - TerrainLength * 0.1f)
         {
-            Debug.Log(PlayerZ + " | " + TileFront.position.z);
-            Vector3 currentBackPos = TileBack.transform.position;
-            currentBackPos.Set(currentBackPos.x, currentBackPos.y, currentBackPos.z + TerrainLength * 2.0f);
-            TileBack.transform.position = currentBackPos;
-
-            Transform oldBack = TileBack;
-            TileBack = TileFront;
-            TileFront = oldBack;
-
-            List<GameObject> oldIslandsBack = IslandsBack;
-            IslandsBack = IslandsFront;
-            IslandsFront = oldIslandsBack;
-            DestroyIslands(ref IslandsFront);
-            SpawnIslands(TileFront, ref IslandsFront);
-
-            //MassSpawner oldBackSpawner = WaterSpawnerBack;
-            //WaterSpawnerBack = WaterSpawnerFront;
-            //WaterSpawnerFront = oldBackSpawner;
-            //Vector3 oldOffset = WaterSpawnerFront.UnitPositionOffset;
-            //WaterSpawnerFront.UnitPositionOffset = new Vector3(oldOffset.x, oldOffset.y, oldOffset.z + 96 * 2);
-
-            //MassSpringSystem oldBackSystem = WaterSystemBack;
-            //WaterSystemBack = WaterSystemFront;
-            //WaterSystemFront = oldBackSystem;
-            //PlayerForceController.WaterGrid = WaterSystemBack;
-
-            Player.SwapWaterPlanes();
+            if (PlayerZ < TileFront.position.z + TerrainLength * TerrainSwapSyncLimit)
+            {
+                if (!TerrainSwapRequired)
+                { 
+                    TerrainSwapRequired = true;
+                }
+            }
+            else
+            {
+                // We're too close to the edge of the terrain to wait for a beat to sync to.
+                SwapTerrain();
+            }
+            
         }
+    }
+
+    public void SwapTerrain()
+    {
+        Vector3 currentBackPos = TileBack.transform.position;
+        currentBackPos.Set(currentBackPos.x, currentBackPos.y, currentBackPos.z + TerrainLength * 2.0f);
+        TileBack.transform.position = currentBackPos;
+
+        Transform oldBack = TileBack;
+        TileBack = TileFront;
+        TileFront = oldBack;
+
+        List<GameObject> oldIslandsBack = IslandsBack;
+        IslandsBack = IslandsFront;
+        IslandsFront = oldIslandsBack;
+        DestroyIslands(ref IslandsFront);
+        SpawnIslands(TileFront, ref IslandsFront);
+
+        Player.SwapWaterPlanes();
+        TerrainSwapRequired = false;
     }
 
     public void ResetGame()
@@ -121,5 +129,11 @@ public class EnvironmentScroller : MonoBehaviour
         for (int i = 0; i < IslandsList.Count; ++i)
             Destroy(IslandsList[i].gameObject);
         IslandsList.Clear();
+    }
+
+    public void OnBeat()
+    {
+        if (TerrainSwapRequired)
+            SwapTerrain();
     }
 }

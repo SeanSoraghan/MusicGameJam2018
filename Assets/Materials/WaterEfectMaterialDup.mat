@@ -59,21 +59,26 @@ Material:
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
+    - _GlobalTrailWeight: 1
     - _GlossMapScale: 1
     - _Glossiness: 0.3
     - _GlossyReflections: 1
-    - _Granularity: 6.68
+    - _Granularity: 9.1
+    - _MaxTrailWidth: 0.5
     - _Metallic: 1
+    - _MinTrailWidth: 0.05
     - _Mode: 0
-    - _NAmount: 0.14
+    - _NAmount: 0.085
     - _NShift: 0.125
-    - _NSpeed: 2.64
+    - _NSpeed: 7
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _TextureShiftGranularity: 4.03
+    - _TextureShiftGranularity: 4
+    - _TrailGranularity: 7
+    - _TrailSpeed: 10
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:

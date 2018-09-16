@@ -12,13 +12,17 @@ public class InputHandler : MonoBehaviour
     public UnityEvent OnRightButtonReleased;
     public UnityEvent OnLeftButtonReleased;
 
+    public UnityEvent OnForwardButtonPressed;
+    public UnityEvent OnForwardButtonReleased;
+
+    bool ForwardPressed = false;
     bool RightPressed = false;
     bool LeftPressed = false;
     bool ButtonPressed
     {
         get
         {
-            return RightPressed || LeftPressed;
+            return RightPressed || LeftPressed || ForwardPressed;
         }
     }	
 
@@ -42,6 +46,16 @@ public class InputHandler : MonoBehaviour
                     RightButtonReleased();
                 else if (LeftPressed)
                     LeftButtonReleased();
+            }
+
+            if (Input.GetAxis("Vertical") > 0)
+            {
+                if (!ButtonPressed)
+                    ForwardButtonPressed();
+            }
+            else if (ForwardPressed)
+            {
+                ForwardButtonReleased();
             }
         }
 	}
@@ -68,6 +82,18 @@ public class InputHandler : MonoBehaviour
     {
         LeftPressed = false;
         OnLeftButtonReleased.Invoke();
+    }
+
+    public void ForwardButtonPressed()
+    {
+        ForwardPressed = true;
+        OnForwardButtonPressed.Invoke();
+    }
+
+    public void ForwardButtonReleased()
+    {
+        ForwardPressed = false;
+        OnForwardButtonReleased.Invoke();
     }
     
 }

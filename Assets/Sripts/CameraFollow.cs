@@ -6,7 +6,8 @@ public class CameraFollow : MonoBehaviour
 {
     public Transform Player;
     public float CameraLerpSpeed = 2.0f;
-    public float PlayerZDistance = 0.0f;
+    private float PlayerZDistance = 0.0f;
+    private float PlayerXDistance = 0.0f;
 
     //int fixedUpdatesPerFrame = 0;
 
@@ -15,15 +16,18 @@ public class CameraFollow : MonoBehaviour
     {
         if (Player != null)
 		    PlayerZDistance = transform.position.z - Player.position.z;
+        if (Player != null)
+            PlayerXDistance = transform.position.x - Player.position.x;
 	}
 	
 	// Update is called once per frame
-	void Update ()
+	void FixedUpdate ()
     {
         //++fixedUpdatesPerFrame;
 		var currentPos = transform.position;
-        var newZ = Mathf.Lerp(currentPos.z, Player.position.z + PlayerZDistance, Time.deltaTime * CameraLerpSpeed);
-        transform.position = new Vector3(currentPos.x, currentPos.y, newZ);
+        var newZ = /*Player.position.z + PlayerZDistance;//*/Mathf.Lerp(currentPos.z, Player.position.z + PlayerZDistance, Time.deltaTime * CameraLerpSpeed);
+        var newX = Mathf.Lerp(currentPos.x, Player.position.x + PlayerXDistance, Time.deltaTime * CameraLerpSpeed);
+        transform.position = new Vector3(newX, currentPos.y, newZ);
 	}
 
     //private void Update ()
